@@ -1,4 +1,4 @@
-# microservice-updater-frontend
+= microservice-updater-frontend
 
 A Streamlit frontend for our https://github.com/WSE-research/microservice-updater project.
 
@@ -6,15 +6,17 @@ A Streamlit frontend for our https://github.com/WSE-research/microservice-update
 
 Install all dependencies:
 
-```
+[source]
+----
 python3 -m pip install -r requirements.txt
-```
+----
 
 == Start applications
 
 Use Python 3.9 as Streamlit is currently not compatible with Python 3.10+.
 
-```
+[source]
+----
 python3.9 -m streamlit run app.py --server.enableStaticServing true
-```
+----
 
