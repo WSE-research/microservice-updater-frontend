@@ -1,5 +1,6 @@
 import streamlit as st
 import requests
+import os
 
 
 @st.cache_data(ttl=10, show_spinner=True)
@@ -29,7 +30,7 @@ st.markdown("""
 
 url = st.text_input('URL of *Microservice Updater* instance', help="Enter the URL of the *Microservice Updater* you "
                                                                    "want to fetch the service list from.",
-                    value="https://demos.swe.htwk-leipzig.de:40195")
+                    value=os.getenv('BACKEND_URL', "https://localhost:5000"))
 
 api_key_field = st.text_input('API-KEY of *Microservice Updater* instance', type='password',
                               help='Enter the API-KEY necessary to access the service endpoints')
