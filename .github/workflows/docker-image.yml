@@ -27,7 +27,7 @@ jobs:
       run: docker push "wseresearch/microservice-updater-frontend:${{ github.ref_name }}"
     - name: Create deployment setup
       if: startsWith(github.ref, 'refs/tags/')
-      run: echo "BACKEND_URL=${{ github.URL }}" > service_config/files/env
+      run: echo "BACKEND_URL=${{ secrets.URL }}" > service_config/files/env
     - name: Init update
       if: startsWith(github.ref, 'refs/tags/')
       uses: WSE-research/docker-service-updater@v0.2.0
