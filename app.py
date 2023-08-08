@@ -16,6 +16,10 @@ def update_service(service_url, payload):
     return requests.post(service_url, json=payload, verify=False)
 
 
+def patch_service(service_url, payload):
+    return requests.patch(service_url, json=payload, verify=False)
+
+
 st.set_page_config(
     page_title="Microservice Updater",
     layout="wide"
@@ -161,6 +165,8 @@ if url:
                         st.markdown(f"Actions for `{service}`", unsafe_allow_html=True)
 
                         container_volumes = st.text_input('Volume mappings, *required for updates*')
+                        container_tag = st.text_input('Docker image tag')
+                        container_ports = st.text_input('Port mappings')
 
                         if st.button('Delete'):
                             if not api_key_field:
@@ -178,6 +184,17 @@ if url:
                             else:
                                 resp = update_service(f'{url}/service/{service}', {
                                     'API-KEY': api_key_field, 'volumes': container_volumes.split(',')})
+                                if resp.ok:
+                                    st.success(resp.text)
+                                else:
+                                    st.error(resp.text)
+                        if st.button('Edit settings'):
+                            if not api_key_field:
+                                st.error('API-KEY missing!')
+                            else:
+                                resp = patch_service(f'{url}/service/{service}', {
+                                    'tag': container_tag, 'port': container_ports, 'API-KEY': api_key_field,
+                                    'volumes': container_volumes.split(',')})
                                 if resp.ok:
                                     st.success(resp.text)
                                 else:
