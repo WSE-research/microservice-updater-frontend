@@ -32,12 +32,15 @@ st.markdown("""
        instance.
 """)
 
-url = st.text_input('URL of *Microservice Updater* instance', help="Enter the URL of the *Microservice Updater* you "
-                                                                   "want to fetch the service list from.",
-                    value=os.getenv('BACKEND_URL', "https://localhost:5000"))
+url = st.text_input(
+    'URL of *Microservice Updater* instance', 
+    help="Enter the URL of the *Microservice Updater* you want to fetch the service list from.",
+    value=os.getenv('BACKEND_URL', "https://localhost:5000"))
 
-api_key_field = st.text_input('API-KEY of *Microservice Updater* instance', type='password',
-                              help='Enter the API-KEY necessary to access the service endpoints')
+api_key_field = st.text_input(
+    'API key of *Microservice Updater* instance', 
+    type='password',
+    help='Enter the API key necessary to access the service endpoints')
 
 st.markdown("""
 <style>
@@ -69,13 +72,21 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.subheader('Register a new service')
+st.markdown("""
+    You can register a new service by providing the requested information here.
+    There are 3 modes available (docker, docker-compose, dockerfile) to initialize the automatic rollout of your service. 
+    Please see the [documentation](https://github.com/WSE-research/microservice-updater/blob/master/README.md#api-endpoints) for details.
+""")
+
 mode = st.selectbox('Mode', ['docker', 'docker-compose', 'dockerfile'])
-ports = st.text_input('Port mappings, *comma-separated list*')
+ports = st.text_input('Port mappings, *comma-separated list*', help='e.g., `8080:80,5000:3030`')
 volumes = st.text_input('Volume mappings, *comma-separated list*')
+endpoint = url + '/service'
+api_key_error_message_text = 'API key is missing!'
 
 if mode == 'dockerfile':
-    docker_image = st.text_input('Docker Image Name')
-    docker_tag = st.text_input('Docker Image Tag')
+    docker_image = st.text_input('Docker Image Name', help='without Docker image tag')
+    docker_tag = st.text_input('Docker Image Tag', help='e.g., `latest`')
     clone_url = None
 else:
     docker_image = None
@@ -84,9 +95,9 @@ else:
 
 if st.button('Register new service'):
     if not api_key_field:
-        st.error('API-KEY missing!')
+        st.error(api_key_error_message_text)
     else:
-        response = update_service(f'{url}/service',
+        response = update_service(endpoint,
                                   {'mode': mode, 'image': docker_image, 'tag': docker_tag, 'url': clone_url,
                                    'API-KEY': api_key_field, 'port': ports, 'volumes': volumes.split(',')})
 
@@ -95,20 +106,31 @@ if st.button('Register new service'):
         else:
             st.error(response.text)
 
+
 if url:
-    st.markdown(f"Fetching services from `{url}`...")
+    st.markdown(f"Fetching services from `{endpoint}`...")
 
     # Fetch the services from the given URL using GET
-    response = get_services(f'{url}/service')
+    try:
+        response = get_services(f'{endpoint}')
+    except requests.exceptions.ConnectionError:
+        st.error(f"""
+            Connection error while trying to fetch services from the given URL: {endpoint}. 
+            *Microservice Updater* web service address was set to {url}. 
+            Please check the above URL field or set the `BACKEND_URL` environment variable (`export BACKEND_URL=...`). 
+        """)
+        st.stop()
+
     if response.status_code == 200:
         data = response.json()
         st.subheader(f"Found {len(data)} services")
+        st.markdown("""The list will not refresh automatically. Click the checkbox to see details and actions for each service.""")
 
         for service in data:
             placeholder = st.empty()
 
             with st.container():
-                service_response = get_services(f'{url}/service/{service}')
+                service_response = get_services(f'{endpoint}/{service}')
                 if service_response.status_code == 200:
                     service_data = service_response.json()
                 else:
@@ -170,9 +192,9 @@ if url:
 
                         if st.button('Delete'):
                             if not api_key_field:
-                                st.error('API-KEY missing!')
+                                st.error(api_key_error_message_text)
                             else:
-                                resp = delete_service(f'{url}/service/{service}', api_key_field)
+                                resp = delete_service(f'{endpoint}/{service}', api_key_field)
 
                                 if resp.ok:
                                     st.success(f'Service `{service}` removed')
@@ -180,9 +202,9 @@ if url:
                                     st.error(f'Deletion failed: `{resp.text}`')
                         if st.button('Update'):
                             if not api_key_field:
-                                st.error('API-KEY missing!')
+                                st.error(api_key_error_message_text)
                             else:
-                                resp = update_service(f'{url}/service/{service}', {
+                                resp = update_service(f'{endpoint}/{service}', {
                                     'API-KEY': api_key_field, 'volumes': container_volumes.split(',')})
                                 if resp.ok:
                                     st.success(resp.text)
@@ -190,9 +212,9 @@ if url:
                                     st.error(resp.text)
                         if st.button('Edit settings'):
                             if not api_key_field:
-                                st.error('API-KEY missing!')
+                                st.error(api_key_error_message_text)
                             else:
-                                resp = patch_service(f'{url}/service/{service}', {
+                                resp = patch_service(f'{endpoint}/{service}', {
                                     'tag': container_tag, 'port': container_ports, 'API-KEY': api_key_field,
                                     'volumes': container_volumes.split(',')})
                                 if resp.ok:

@@ -1,4 +1,5 @@
-FROM python:slim
+FROM python:3.10-slim 
+# pyarrow doesn't support 3.11 yet
 WORKDIR /app
 COPY . .
 RUN apt-get update && apt-get install -y build-essential curl software-properties-common && rm -rf /var/lib/apt/lists/*
