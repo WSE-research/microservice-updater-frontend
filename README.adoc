@@ -13,10 +13,10 @@ python3 -m pip install -r requirements.txt
 
 == Start applications
 
-Use Python 3.9 as Streamlit is currently not compatible with Python 3.10+.
+Use Python 3.9 or 3.10 as Streamlit is currently not compatible with Python 3.11.
 
 [source]
 ----
-python3.9 -m streamlit run app.py --server.enableStaticServing true
+python3.10 -m streamlit run app.py --server.enableStaticServing true
 ----
 
