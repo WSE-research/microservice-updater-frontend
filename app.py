@@ -128,100 +128,105 @@ if url:
 
         for service in data:
             placeholder = st.empty()
+            
+            try:
 
-            with st.container():
-                service_response = get_services(f'{endpoint}/{service}')
-                if service_response.status_code == 200:
-                    service_data = service_response.json()
-                else:
-                    service_data = {}
-
-                state = str(service_data["state"])
-
-                headline_part, status_part, details_activator_part = st.columns([70, 20, 1])
-
-                with headline_part:
-                    if state == "RUNNING":
-                        message = f" <span class='icon_ok'></span>"
+                with st.container():
+                    service_response = get_services(f'{endpoint}/{service}')
+                    if service_response.status_code == 200:
+                        service_data = service_response.json()
                     else:
-                        message = f" <span class='icon_warn'></span>"
+                        service_data = {}
 
-                    st.markdown(message + "**" + service + "** ", unsafe_allow_html=True)
+                    state = str(service_data["state"])
 
-                with details_activator_part:
-                    details = st.checkbox("Details", key=service, label_visibility="collapsed",
-                                          help="Show details of the service.")
+                    headline_part, status_part, details_activator_part = st.columns([70, 20, 1])
 
-                with status_part:
-                    if state == "RUNNING":
-                        message = f" <span class='ok'>{state}</span>"
-                    else:
-                        message = f" <span class='warn'>{state}</span>"
-
-                    st.markdown(message, unsafe_allow_html=True)
-
-                values_part, actions_part = st.columns([2, 1])
-                if details:
-                    with values_part:
-                        if service_response.status_code == 200:
-                            properties = ""
-                            for key in service_data:
-                                if key == "id":
-                                    continue
-                                if key == "errors" and service_data[key]:
-                                    st.warning(f"Error: `{service_data[key]}`")
-                                    continue
-                                if key == "state":
-                                    state = service_data[key]
-                                    if state == "RUNNING":
-                                        st.success(f"State: `{state}`")
-                                    else:
-                                        st.error(f"State: `{state}`")
-                                    continue
-                                properties += f"* {key}: {service_data[key]}\n"
-                            st.markdown(properties)
+                    with headline_part:
+                        if state == "RUNNING":
+                            message = f" <span class='icon_ok'></span>"
                         else:
-                            st.error(f"Error: `{service_response.status_code}`")
+                            message = f" <span class='icon_warn'></span>"
 
-                    with actions_part:
-                        st.markdown(f"Actions for `{service}`", unsafe_allow_html=True)
+                        st.markdown(message + "**" + service + "** ", unsafe_allow_html=True)
 
-                        container_volumes = st.text_input('Volume mappings, *required for updates*')
-                        container_tag = st.text_input('Docker image tag')
-                        container_ports = st.text_input('Port mappings')
+                    with details_activator_part:
+                        details = st.checkbox("Details", key=service, label_visibility="collapsed",
+                                            help="Show details of the service.")
 
-                        if st.button('Delete'):
-                            if not api_key_field:
-                                st.error(api_key_error_message_text)
+                    with status_part:
+                        if state == "RUNNING":
+                            message = f" <span class='ok'>{state}</span>"
+                        else:
+                            message = f" <span class='warn'>{state}</span>"
+
+                        st.markdown(message, unsafe_allow_html=True)
+
+                    values_part, actions_part = st.columns([2, 1])
+                    if details:
+                        with values_part:
+                            if service_response.status_code == 200:
+                                properties = ""
+                                for key in service_data:
+                                    if key == "id":
+                                        continue
+                                    if key == "errors" and service_data[key]:
+                                        st.warning(f"Error: `{service_data[key]}`")
+                                        continue
+                                    if key == "state":
+                                        state = service_data[key]
+                                        if state == "RUNNING":
+                                            st.success(f"State: `{state}`")
+                                        else:
+                                            st.error(f"State: `{state}`")
+                                        continue
+                                    properties += f"* {key}: {service_data[key]}\n"
+                                st.markdown(properties)
                             else:
-                                resp = delete_service(f'{endpoint}/{service}', api_key_field)
+                                st.error(f"Error: `{service_response.status_code}`")
 
-                                if resp.ok:
-                                    st.success(f'Service `{service}` removed')
+                        with actions_part:
+                            st.markdown(f"Actions for `{service}`", unsafe_allow_html=True)
+
+                            container_volumes = st.text_input('Volume mappings, *required for updates*')
+                            container_tag = st.text_input('Docker image tag')
+                            container_ports = st.text_input('Port mappings')
+
+                            if st.button('Delete'):
+                                if not api_key_field:
+                                    st.error(api_key_error_message_text)
                                 else:
-                                    st.error(f'Deletion failed: `{resp.text}`')
-                        if st.button('Update'):
-                            if not api_key_field:
-                                st.error(api_key_error_message_text)
-                            else:
-                                resp = update_service(f'{endpoint}/{service}', {
-                                    'API-KEY': api_key_field, 'volumes': container_volumes.split(',')})
-                                if resp.ok:
-                                    st.success(resp.text)
+                                    resp = delete_service(f'{endpoint}/{service}', api_key_field)
+
+                                    if resp.ok:
+                                        st.success(f'Service `{service}` removed')
+                                    else:
+                                        st.error(f'Deletion failed: `{resp.text}`')
+                            if st.button('Update'):
+                                if not api_key_field:
+                                    st.error(api_key_error_message_text)
                                 else:
-                                    st.error(resp.text)
-                        if st.button('Edit settings'):
-                            if not api_key_field:
-                                st.error(api_key_error_message_text)
-                            else:
-                                resp = patch_service(f'{endpoint}/{service}', {
-                                    'tag': container_tag, 'port': container_ports, 'API-KEY': api_key_field,
-                                    'volumes': container_volumes.split(',')})
-                                if resp.ok:
-                                    st.success(resp.text)
+                                    resp = update_service(f'{endpoint}/{service}', {
+                                        'API-KEY': api_key_field, 'volumes': container_volumes.split(',')})
+                                    if resp.ok:
+                                        st.success(resp.text)
+                                    else:
+                                        st.error(resp.text)
+                            if st.button('Edit settings'):
+                                if not api_key_field:
+                                    st.error(api_key_error_message_text)
                                 else:
-                                    st.error(resp.text)
-                    st.write("---")
+                                    resp = patch_service(f'{endpoint}/{service}', {
+                                        'tag': container_tag, 'port': container_ports, 'API-KEY': api_key_field,
+                                        'volumes': container_volumes.split(',')})
+                                    if resp.ok:
+                                        st.success(resp.text)
+                                    else:
+                                        st.error(resp.text)
+                        st.write("---")
+            except Exception as e:
+                st.error(f"Error for {service}: `{e}`")
+                continue
     else:
         st.error(f"Error: `{response.status_code}`")
         st.stop()
