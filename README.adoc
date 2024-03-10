@@ -17,6 +17,11 @@ Use Python 3.9 or 3.10 as Streamlit is currently not compatible with Python 3.11
 
 [source]
 ----
+export BACKEND_URL=
 python3.10 -m streamlit run app.py --server.enableStaticServing true
 ----
 
+
+== Docker Images
+
+available at https://hub.docker.com/r/wseresearch/microservice-updater-frontend
