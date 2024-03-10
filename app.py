@@ -172,8 +172,9 @@ if url:
                     else:
                         service_data = {}
 
-                    if "state" in service_data:
                         state = str(service_data["state"])
+                    if "state" in service_data:
+                        pass
                     else:
                         st.error(f"Error: `{service_response.status_code}` for service `{service}`: `{service_response.text}`")
                         state = "UNKNOWN"
@@ -182,19 +183,17 @@ if url:
 
                     with headline_part:
                         if state == "RUNNING":
-                            message = f" <span class='icon_ok'></span>"
+                            message = " <span class='icon_ok'></span>"
                         else:
                             service_data = {}
-
-                        state = str(service_data["state"])
 
                         headline_part, status_part, details_activator_part = st.columns([70, 20, 1])
 
                         with headline_part:
                             if state == "RUNNING":
-                                message = f" <span class='icon_ok'></span>"
+                                message = " <span class='icon_ok'></span>"
                             else:
-                                message = f" <span class='icon_warn'></span>"
+                                message = " <span class='icon_warn'></span>"
 
                             st.markdown(message + "**" + service + "** ", unsafe_allow_html=True)
 
