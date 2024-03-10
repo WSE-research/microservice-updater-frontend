@@ -172,9 +172,8 @@ if url:
                     else:
                         service_data = {}
 
-                        state = str(service_data["state"])
                     if "state" in service_data:
-                        pass
+                        state = str(service_data["state"])
                     else:
                         st.error(f"Error: `{service_response.status_code}` for service `{service}`: `{service_response.text}`")
                         state = "UNKNOWN"
