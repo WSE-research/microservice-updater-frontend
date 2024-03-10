@@ -1,9 +1,8 @@
 import streamlit as st
 from streamlit_javascript import st_javascript
+import validators
 import requests
 import os
-import validators
-import zlib
 
 BACKEND_FALLBACK_URL = "https://localhost:5000"
 
