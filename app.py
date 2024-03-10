@@ -1,7 +1,11 @@
 import streamlit as st
+from streamlit_javascript import st_javascript
 import requests
 import os
+import validators
+import zlib
 
+BACKEND_FALLBACK_URL = "https://localhost:5000"
 
 @st.cache_data(ttl=10, show_spinner=True)
 def get_services(service_url):
@@ -19,6 +23,11 @@ def update_service(service_url, payload):
 def patch_service(service_url, payload):
     return requests.patch(service_url, json=payload, verify=False)
 
+def hex2ascii(hex_string):
+    byte_string = bytes.fromhex(hex_string)  
+    ascii_string = byte_string.decode("ASCII")  
+    return ascii_string
+
 
 st.set_page_config(
     page_title="Microservice Updater",
@@ -27,20 +36,37 @@ st.set_page_config(
 
 st.title("Microservice Updater")
 
-st.markdown("""
-       This app fetches the latest version of deployed web services from the given endpoint of a *Microservice Updater*
-       instance.
-""")
+st.markdown("""This app fetches the latest version of deployed web services from the given endpoint of a *Microservice Updater* instance.""")
+
+
+app_url = st_javascript("await fetch('').then(r => window.parent.location.href)").split("?")[0]
+
+backend_url = st.query_params["backend_url"] if "backend_url" in st.query_params else os.getenv('BACKEND_URL', BACKEND_FALLBACK_URL)
+if not validators.url(backend_url):
+    st.warning(f"Invalid backend URL: `{backend_url}`. Falling back to default URL: `{BACKEND_FALLBACK_URL}`")  
+if backend_url.endswith('service/') or backend_url.endswith('service'):
+    st.warning("Backend URL should not end with `service` or `service/`. Please remove it from the URL.")
+
 
 url = st.text_input(
     'URL of *Microservice Updater* instance', 
     help="Enter the URL of the *Microservice Updater* you want to fetch the service list from.",
-    value=os.getenv('BACKEND_URL', "https://localhost:5000"))
+    value=backend_url,
+    key="backend_url"
+)
 
 api_key_field = st.text_input(
     'API key of *Microservice Updater* instance', 
     type='password',
-    help='Enter the API key necessary to access the service endpoints')
+    help='Enter the API key necessary to access the service endpoints',
+    value=hex2ascii(st.query_params["api_key"]) if "api_key" in st.query_params else "",
+    key="api_key"
+)
+
+if api_key_field:
+    bookmark_url =  app_url + "?api_key=" + api_key_field.encode('utf-8').hex() + "&backend_url=" + url
+    with st.expander("Bookmark this URL", expanded=False):
+        st.code(bookmark_url)
 
 st.markdown("""
 <style>
