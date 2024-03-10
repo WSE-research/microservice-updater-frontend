@@ -65,7 +65,7 @@ api_key_field = st.text_input(
 
 if api_key_field:
     bookmark_url =  app_url + "?api_key=" + api_key_field.encode('utf-8').hex() + "&backend_url=" + url
-    with st.expander("Bookmark this URL", expanded=False):
+    with st.expander("For your bookmarks: See the URL to the current service configuration for easier access.", expanded=False):
         st.code(bookmark_url)
 
 st.markdown("""
