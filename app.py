@@ -4,7 +4,6 @@ import validators
 import requests
 import os
 import json
-from code_editor import code_editor
 from streamlit_extras.stylable_container import stylable_container
 from streamlit_extras.add_vertical_space import add_vertical_space
 from streamlit_extras.app_logo import add_logo
