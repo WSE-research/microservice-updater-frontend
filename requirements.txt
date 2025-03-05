@@ -1,5 +1,5 @@
 Requests==2.32.3
 streamlit==1.42.0
 streamlit-javascript==0.1.5
-validators==0.33.0
+validators==0.34.0
 streamlit_extras~=0.5.5
