@@ -3,6 +3,12 @@ from streamlit_javascript import st_javascript
 import validators
 import requests
 import os
+import json
+from code_editor import code_editor
+from streamlit_extras.stylable_container import stylable_container
+from streamlit_extras.add_vertical_space import add_vertical_space
+from streamlit_extras.app_logo import add_logo
+
 
 BACKEND_FALLBACK_URL = "https://localhost:5000"
 api_key_error_message_text = 'API key is missing!'
@@ -28,18 +34,48 @@ def hex2ascii(hex_string):
     ascii_string = byte_string.decode("ASCII")  
     return ascii_string
 
+def register_new_service(endpoint, mode, docker_image, docker_tag, clone_url, api_key_field, ports, volumes):
+    if not api_key_field:
+        st.error(api_key_error_message_text)
+        return
+    
+    response = update_service(endpoint,
+                            {'mode': mode, 
+                             'image': docker_image, 
+                             'tag': docker_tag, 
+                             'url': clone_url,
+                             'API-KEY': api_key_field, 
+                             'port': ports, 
+                             'volumes': volumes.split(',')})
+    if response.ok:
+        json_response = response.json()
+        st.success(f"Service {json_response.get('id')} registered successfully ({json_response.get('state')}, {response.text})")
+        st.balloons()
+    else:
+        st.error(response.text)
 
 st.set_page_config(
     page_title="Microservice Updater",
     layout="wide"
 )
 
-st.title("Microservice Updater")
 
+title_container = st.container()
+col1, col2 = st.columns([1, 50], vertical_alignment="bottom", gap="small")
+with title_container:
+    with col1:
+        st.image("images/logo.png", width=48)
+    with col2:
+        st.title("Microservice Updater")
 st.markdown("""This app fetches the latest version of deployed web services from the given endpoint of a *Microservice Updater* instance.""")
+add_logo("images/logo.png", height=300)
 
 
-app_url = st_javascript("await fetch('').then(r => window.parent.location.href)").split("?")[0]
+# if questionmark is present, then search for the app_url
+if "?" in st.query_params:
+    app_url = st.query_params["?"].split("?")[0]
+else:
+    app_url = st_javascript("await fetch('').then(r => window.parent.location.href)").split("?")[0]
 
 backend_url = st.query_params["backend_url"] if "backend_url" in st.query_params else os.getenv('BACKEND_URL', BACKEND_FALLBACK_URL)
 if not validators.url(backend_url):
@@ -99,40 +135,132 @@ st.markdown("""
 
 endpoint = url + '/service'
 
-with st.expander("Register a new service", expanded=False):
-    st.subheader('Register a new service')
-    st.markdown("""
-        You can register a new service by providing the requested information here.
-        There are 3 modes available (docker, docker-compose, dockerfile) to initialize the automatic rollout of your service. 
-        Please see the [documentation](https://github.com/WSE-research/microservice-updater/blob/master/README.md#api-endpoints) for details.
-    """)
+# block for creating a new service
+with stylable_container(
+        key="container_with_border",
+        css_styles="""
+            {
+                border: 2px solid rgba(49, 51, 63, 0.2);
+                border-radius: 0.5rem;
+                padding: calc(1em - 1px);
+                border-color: #FF3399;
+            }
+            """,
+    ):
+    with st.expander("🆕 Create a new service", expanded=False):
+        st.subheader('Register a new service')
+        st.markdown("""
+            You can register a new service by providing the requested information here.
+            There are 3 modes available (docker, docker-compose, dockerfile) to initialize the automatic rollout of your service. 
+            Please see the [documentation](https://github.com/WSE-research/microservice-updater/blob/master/README.md#api-endpoints) for details.
+        """)
 
-    mode = st.selectbox('Mode', ['docker', 'docker-compose', 'dockerfile'])
-    ports = st.text_input('Port mappings, *comma-separated list*', help='e.g., `8080:80,5000:3030`')
-    volumes = st.text_input('Volume mappings, *comma-separated list*')
+        mode = st.selectbox('Mode', ['json', 'dockerfile', 'docker', 'docker-compose'])
+        ports = None
+        
+        if mode == 'json':
+            config_text = ""
+            json_config = st.text_area(label="Enter the JSON configuration for the service (service_config.json):", height=250, key="json_config")
+            if json_config != "":
+                try:    
+                    json_config = json.loads(json_config)
+                    if json_config.get('services', None) is not None:
+                        json_config = json_config.get('services')[0]
 
-    if mode == 'dockerfile':
-        docker_image = st.text_input('Docker Image Name', help='without Docker image tag')
-        docker_tag = st.text_input('Docker Image Tag', help='e.g., `latest`')
-        clone_url = None
-    else:
-        docker_image = None
-        docker_tag = None
-        clone_url = st.text_input('Git Clone URL')
+                    docker_image = json_config.get('image', None)
+                    docker_tag = json_config.get('tag', None)
+                    ports = json_config.get('port', None)
+                    volumes = json_config.get('volumes', None)
+                    mode = json_config.get('mode', None)
+                    clone_url = json_config.get('url', None)
+                    
+                    if volumes is None:
+                        volumes = ""
 
-    if st.button('Register new service'):
-        if not api_key_field:
-            st.error(api_key_error_message_text)
-        else:
-            response = update_service(endpoint,
-                                    {'mode': mode, 'image': docker_image, 'tag': docker_tag, 'url': clone_url,
-                                    'API-KEY': api_key_field, 'port': ports, 'volumes': volumes.split(',')})
-
-            if response.ok:
-                st.success(response.text)
+                    # create a dict from the values 
+                    config_dict = {
+                        'mode': mode,
+                        'docker_image': docker_image,
+                        'docker_tag': docker_tag,
+                        'ports': ports,
+                        'volumes': volumes,
+                        'clone_url': clone_url
+                    }
+                    for key, value in config_dict.items():
+                        config_left1, config_right1 = st.columns([1, 4], vertical_alignment="center")
+                        with config_left1:
+                            st.write(f'{key}:')
+                        with config_right1:
+                            st.code(value)
+                        
+                except json.JSONDecodeError:
+                    st.error('Invalid JSON configuration')
+                
             else:
-                st.error(response.text)
+                st.warning('No JSON configuration provided')
+            
+        else:
+            ports = st.text_input('Port mappings, *comma-separated list*', help='e.g., `8080:80,5000:3030`')
+            volumes = st.text_input('Volume mappings, *comma-separated list*')
+            
+            if mode == 'dockerfile':
+                docker_image = st.text_input('Docker Image Name', help='without Docker image tag')
+                docker_tag = st.text_input('Docker Image Tag', help='e.g., `latest`')
+                clone_url = None
+            else:
+                docker_image = None
+                docker_tag = None
+                clone_url = st.text_input('Git Clone URL')
 
+        if ports != None and ports != "":
+            with stylable_container(
+                "green",
+                css_styles="""
+                button {
+                    background-color: #66FF66;
+                    border-color: #009900;
+                    color: black;
+                }"""
+            ):
+                if st.button('🆕 Register new service', key="button1"):
+                    with st.spinner("waiting for response of creater ...", show_time=True):
+                        result = register_new_service(endpoint, mode, docker_image, docker_tag, clone_url, 
+                                    api_key_field, ports, volumes)
+                        if result:
+                            st.success(f"Service {result.get('id')} registered successfully ({result.get('state')})")
+                        else:
+                            st.error("Service registration failed")
+
+            with stylable_container(
+                "cyan",
+                css_styles="""
+                button {
+                    background-color: #66FFFF;
+                    border-color: #009999;
+                    color: black;
+                }""",
+            ):
+                if st.button('🗑️+🆕 Delete and thereafter register as a new service', key="button2"):
+                    service = docker_image.replace('/', '-')
+                    st.info(f"Deleting service `{service}` and registering as new service")
+                    if not api_key_field:
+                        st.error(api_key_error_message_text)
+                    else:
+                        with st.spinner("waiting for response of deleter ...", show_time=True):
+                            resp = delete_service(f'{endpoint}/{service}', api_key_field)
+
+                        if resp.ok:
+                            st.success(f'Service `{service}` removed')
+
+                            with st.spinner("waiting for response of creater ...", show_time=True):
+                                register_new_service(endpoint, mode, docker_image, docker_tag, clone_url, 
+                                        api_key_field, ports, volumes)
+                        else:
+                            st.error(f'Deletion failed: `{resp.text}`')
+
+
+# add vertical space between the create service and the filter services sections
+add_vertical_space(3)
 
 filter_string = st.text_input('Filter services by name (string)', key="filter", help="full-text match on service name").lower()
 
@@ -276,3 +404,5 @@ if url:
     else:
         st.error(f"Error: `{response.status_code}`")
         st.stop()
+
+
