@@ -33,19 +33,21 @@ def hex2ascii(hex_string):
     ascii_string = byte_string.decode("ASCII")  
     return ascii_string
 
-def register_new_service(endpoint, mode, docker_image, docker_tag, clone_url, api_key_field, ports, volumes):
+def register_new_service(endpoint, mode, docker_image, docker_tag, clone_url, api_key_field, ports, volumes,
+                         health_path=""):
     if not api_key_field:
         st.error(api_key_error_message_text)
         return
-    
+
     response = update_service(endpoint,
-                            {'mode': mode, 
-                             'image': docker_image, 
-                             'tag': docker_tag, 
+                            {'mode': mode,
+                             'image': docker_image,
+                             'tag': docker_tag,
                              'url': clone_url,
-                             'API-KEY': api_key_field, 
-                             'port': ports, 
-                             'volumes': volumes.split(',')})
+                             'API-KEY': api_key_field,
+                             'port': ports,
+                             'volumes': volumes.split(','),
+                             'health_path': health_path or ""})
     if response.ok:
         json_response = response.json()
         st.success(f"Service {json_response.get('id')} registered successfully ({json_response.get('state')}, {response.text})")
@@ -172,18 +174,20 @@ with stylable_container(
                     volumes = json_config.get('volumes', None)
                     mode = json_config.get('mode', None)
                     clone_url = json_config.get('url', None)
-                    
+                    health_path = json_config.get('health_path', "")
+
                     if volumes is None:
                         volumes = ""
 
-                    # create a dict from the values 
+                    # create a dict from the values
                     config_dict = {
                         'mode': mode,
                         'docker_image': docker_image,
                         'docker_tag': docker_tag,
                         'ports': ports,
                         'volumes': volumes,
-                        'clone_url': clone_url
+                        'clone_url': clone_url,
+                        'health_path': health_path
                     }
                     for key, value in config_dict.items():
                         config_left1, config_right1 = st.columns([1, 4], vertical_alignment="center")
@@ -201,7 +205,11 @@ with stylable_container(
         else:
             ports = st.text_input('Port mappings, *comma-separated list*', help='e.g., `8080:80,5000:3030`')
             volumes = st.text_input('Volume mappings, *comma-separated list*')
-            
+            health_path = st.text_input('Health check path, *optional*',
+                                        help='HTTP readiness probe path, e.g., `/health`. '
+                                             'During updates the *Microservice Updater* only switches to the '
+                                             'new container once this path answers HTTP 200. Leave empty to disable.')
+
             if mode == 'dockerfile':
                 docker_image = st.text_input('Docker Image Name', help='without Docker image tag')
                 docker_tag = st.text_input('Docker Image Tag', help='e.g., `latest`')
@@ -223,8 +231,8 @@ with stylable_container(
             ):
                 if st.button('🆕 Register new service', key="button1"):
                     with st.spinner("waiting for response of creater ...", show_time=True):
-                        result = register_new_service(endpoint, mode, docker_image, docker_tag, clone_url, 
-                                    api_key_field, ports, volumes)
+                        result = register_new_service(endpoint, mode, docker_image, docker_tag, clone_url,
+                                    api_key_field, ports, volumes, health_path)
                         if result:
                             st.success(f"Service {result.get('id')} registered successfully ({result.get('state')})")
                         else:
@@ -252,8 +260,8 @@ with stylable_container(
                             st.success(f'Service `{service}` removed')
 
                             with st.spinner("waiting for response of creater ...", show_time=True):
-                                register_new_service(endpoint, mode, docker_image, docker_tag, clone_url, 
-                                        api_key_field, ports, volumes)
+                                register_new_service(endpoint, mode, docker_image, docker_tag, clone_url,
+                                        api_key_field, ports, volumes, health_path)
                         else:
                             st.error(f'Deletion failed: `{resp.text}`')
 
@@ -364,6 +372,12 @@ if url:
                                 container_volumes = st.text_input('Volume mappings, *required for updates*')
                                 container_tag = st.text_input('Docker image tag')
                                 container_ports = st.text_input('Port mappings')
+                                # prefilled with the current value, so saving the settings
+                                # keeps the probe unless the field is edited
+                                container_health_path = st.text_input(
+                                    'Health check path', value=service_data.get('health_path', ''),
+                                    key=f"health_path_{service}",
+                                    help='HTTP readiness probe path, e.g., `/health`. Clear to remove the probe.')
 
                                 if st.button('Delete'):
                                     if not api_key_field:
@@ -391,7 +405,8 @@ if url:
                                     else:
                                         resp = patch_service(f'{endpoint}/{service}', {
                                             'tag': container_tag, 'port': container_ports, 'API-KEY': api_key_field,
-                                            'volumes': container_volumes.split(',')})
+                                            'volumes': container_volumes.split(','),
+                                            'health_path': container_health_path})
                                         if resp.ok:
                                             st.success(resp.text)
                                         else:

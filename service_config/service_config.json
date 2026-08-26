@@ -5,6 +5,7 @@
       "port": "40183:4000",
       "image": "wseresearch/microservice-updater-frontend",
       "tag": "latest",
+      "health_path": "/_stcore/health",
       "files": {
         ".env": "env"
       }
